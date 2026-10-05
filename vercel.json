@@ -1,0 +1,11 @@
+{
+  "buildCommand": "pnpm --filter @apextrack/shared build && pnpm --filter @apextrack/web build",
+  "outputDirectory": "apps/web/dist",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
