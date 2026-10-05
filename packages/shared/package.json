@@ -2,6 +2,7 @@
   "name": "@apextrack/shared",
   "version": "0.1.0",
   "description": "Pure TypeScript telemetry and trip analysis engine for ApexTrack",
+  "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",

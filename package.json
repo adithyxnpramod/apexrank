@@ -4,9 +4,10 @@
   "private": true,
   "description": "Driving trip telemetry platform and driver leaderboard",
   "scripts": {
+    "dev": "pnpm --filter @apextrack/web dev",
     "test": "pnpm --filter @apextrack/shared test",
     "test:watch": "pnpm --filter @apextrack/shared test:watch",
-    "build": "pnpm --filter @apextrack/shared build",
+    "build": "pnpm --filter @apextrack/shared build && pnpm --filter @apextrack/web build",
     "typecheck": "pnpm --filter @apextrack/shared typecheck"
   },
   "devDependencies": {
