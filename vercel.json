@@ -1,6 +1,6 @@
 {
-  "buildCommand": "pnpm --filter @apextrack/shared build && pnpm --filter @apextrack/web build",
-  "outputDirectory": "apps/web/dist",
+  "buildCommand": "pnpm --filter @apextrack/shared build && pnpm --filter @apextrack/web build && node -e \"const fs = require('fs'); fs.cpSync('apps/web/dist', 'dist', {recursive: true});\"",
+  "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
     {

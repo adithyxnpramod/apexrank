@@ -7,7 +7,7 @@
     "dev": "pnpm --filter @apextrack/web dev",
     "test": "pnpm --filter @apextrack/shared test",
     "test:watch": "pnpm --filter @apextrack/shared test:watch",
-    "build": "pnpm --filter @apextrack/shared build && pnpm --filter @apextrack/web build",
+    "build": "pnpm --filter @apextrack/shared build && pnpm --filter @apextrack/web build && node -e \"const fs = require('fs'); fs.cpSync('apps/web/dist', 'dist', {recursive: true});\"",
     "typecheck": "pnpm --filter @apextrack/shared typecheck"
   },
   "devDependencies": {
