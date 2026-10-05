@@ -1,0 +1,16 @@
+{
+  "name": "apextrack",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Driving trip telemetry platform and driver leaderboard",
+  "scripts": {
+    "test": "pnpm --filter @apextrack/shared test",
+    "test:watch": "pnpm --filter @apextrack/shared test:watch",
+    "build": "pnpm --filter @apextrack/shared build",
+    "typecheck": "pnpm --filter @apextrack/shared typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  },
+  "packageManager": "pnpm@12.9.1"
+}
