@@ -4,6 +4,9 @@ import { Layers, Map as MapIcon, Satellite } from 'lucide-react';
 
 export type MapTileTheme = 'dark' | 'streets' | 'satellite';
 
+const CARTO_API_KEY =
+  import.meta.env.VITE_CARTO_API_KEY || 'cb1_4b15_1_2fafd2e86d5c1cff24fc095a';
+
 interface RouteMapProps {
   routeGeoJson?: {
     type: 'LineString';
@@ -30,39 +33,42 @@ export const RouteMap: React.FC<RouteMapProps> = ({
   const [activeTheme, setActiveTheme] = useState<MapTileTheme>(defaultTheme);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Initialize MapLibre with multi-source raster configuration
-  // Uses 100% keyless, public, production-grade GIS & OSM tile endpoints
+  // Initialize MapLibre with authorized CARTO raster tiles + satellite imagery
   useEffect(() => {
     if (!mapContainer.current) return;
+
+    const keyParam = CARTO_API_KEY ? `?key=${CARTO_API_KEY}` : '';
 
     const style: maplibregl.StyleSpecification = {
       version: 8,
       sources: {
-        'esri-dark': {
+        'carto-dark': {
           type: 'raster',
           tiles: [
-            'https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+            `https://a.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png${keyParam}`,
+            `https://b.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png${keyParam}`,
+            `https://c.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png${keyParam}`,
+            `https://d.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png${keyParam}`,
           ],
           tileSize: 256,
-          attribution: '&copy; Esri, HERE, Garmin',
-          maxzoom: 16,
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          maxzoom: 20,
         },
-        'esri-dark-labels': {
+        'carto-voyager': {
           type: 'raster',
           tiles: [
-            'https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+            `https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png${keyParam}`,
+            `https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png${keyParam}`,
+            `https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png${keyParam}`,
+            `https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png${keyParam}`,
           ],
           tileSize: 256,
-          maxzoom: 16,
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          maxzoom: 20,
         },
-        'osm-streets': {
-          type: 'raster',
-          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-          tileSize: 256,
-          attribution: '&copy; OpenStreetMap contributors',
-          maxzoom: 19,
-        },
-        'esri-satellite': {
+        'satellite': {
           type: 'raster',
           tiles: [
             'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -76,23 +82,15 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         {
           id: 'base-dark-layer',
           type: 'raster',
-          source: 'esri-dark',
+          source: 'carto-dark',
           minzoom: 0,
           maxzoom: 20,
           layout: { visibility: defaultTheme === 'dark' ? 'visible' : 'none' },
         },
         {
-          id: 'base-dark-labels',
+          id: 'base-voyager-layer',
           type: 'raster',
-          source: 'esri-dark-labels',
-          minzoom: 0,
-          maxzoom: 20,
-          layout: { visibility: defaultTheme === 'dark' ? 'visible' : 'none' },
-        },
-        {
-          id: 'base-osm-layer',
-          type: 'raster',
-          source: 'osm-streets',
+          source: 'carto-voyager',
           minzoom: 0,
           maxzoom: 20,
           layout: { visibility: defaultTheme === 'streets' ? 'visible' : 'none' },
@@ -100,7 +98,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         {
           id: 'base-sat-layer',
           type: 'raster',
-          source: 'esri-satellite',
+          source: 'satellite',
           minzoom: 0,
           maxzoom: 20,
           layout: { visibility: defaultTheme === 'satellite' ? 'visible' : 'none' },
@@ -236,7 +234,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         geometry: routeGeoJson,
       });
 
-      // If interactive trip detail, auto-fit bounds on data arrival
+      // Auto-fit bounds on data arrival if viewing saved trip
       if (routeGeoJson.coordinates.length > 1 && !liveLocation) {
         const bounds = new maplibregl.LngLatBounds();
         routeGeoJson.coordinates.forEach((coord) => bounds.extend(coord));
@@ -286,12 +284,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
       theme === 'dark' ? 'visible' : 'none'
     );
     map.current.setLayoutProperty(
-      'base-dark-labels',
-      'visibility',
-      theme === 'dark' ? 'visible' : 'none'
-    );
-    map.current.setLayoutProperty(
-      'base-osm-layer',
+      'base-voyager-layer',
       'visibility',
       theme === 'streets' ? 'visible' : 'none'
     );
@@ -316,7 +309,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               ? 'bg-apex-cyan text-dark-950 font-bold shadow-sm'
               : 'text-slate-400 hover:text-white'
           }`}
-          title="Esri Dark GIS Basemap (Keyless)"
+          title="CARTO Dark Matter (Official API Key)"
         >
           <Layers className="w-3.5 h-3.5" />
           <span>Dark</span>
@@ -330,10 +323,10 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               ? 'bg-apex-cyan text-dark-950 font-bold shadow-sm'
               : 'text-slate-400 hover:text-white'
           }`}
-          title="OpenStreetMap Standard (Free / Open)"
+          title="CARTO Voyager Navigation"
         >
           <MapIcon className="w-3.5 h-3.5" />
-          <span>Streets</span>
+          <span>Voyager</span>
         </button>
 
         <button
@@ -344,7 +337,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               ? 'bg-apex-cyan text-dark-950 font-bold shadow-sm'
               : 'text-slate-400 hover:text-white'
           }`}
-          title="Esri Satellite Imagery"
+          title="Satellite Imagery"
         >
           <Satellite className="w-3.5 h-3.5" />
           <span>Satellite</span>
