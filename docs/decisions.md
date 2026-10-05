@@ -52,9 +52,19 @@ This document tracks key technical decisions, rationale, and date of record for 
 
 ---
 
-## ADR-005: Prototype-First Deferral Policy (No Premature Infrastructure)
+## ADR-006: Dual API Client Interface with Mock vs. HTTP Toggle
 - **Date:** 2026-10-06
 - **Status:** Accepted
-- **Context:** It is tempting to add WebSockets, Redis caching, microservices, and message queues early.
-- **Decision:** Strictly avoid WebSockets, Redis, queues, Kubernetes, and microservices in v1. The first working vertical slice uses simple HTTP REST, a pure shared calculation engine, and a PostgreSQL database.
-- **Consequences:** Fast progress, minimal mental overhead, and rapid path to a working product.
+- **Context:** Following the "One new technology at a time" roadmap rule, the UI must be completely usable, testable, and demonstrable before the NestJS backend and PostgreSQL database are implemented.
+- **Decision:** Implement a TypeScript interface `ApiClient` with two concrete implementations: `MockApiClient` (using `localStorage` + the pure shared mathematical engine) and `HttpApiClient` (making REST calls). Controlled by `VITE_USE_MOCKS`.
+- **Consequences:** We can develop and test the entire mobile/desktop user journey on phones via local network tunnels immediately. Transitioning to Phase 5 (real backend) is a single environment variable change.
+
+---
+
+## ADR-007: MapLibre GL JS with Zero-Key Open Dark Map Tiles
+- **Date:** 2026-10-06
+- **Status:** Accepted
+- **Context:** Rendering GPS routes requires a map engine. Using Google Maps or Mapbox requires credit cards, API keys, and restrictive usage quotas for a prototype.
+- **Decision:** Use `maplibre-gl` with free CARTO Dark Matter raster tiles and OpenStreetMap attribution. Downsample polyline points before rendering using our zero-dependency Douglas-Peucker `simplifyRoute` implementation in `@apextrack/shared`.
+- **Consequences:** Zero cost, zero API keys to leak, gorgeous dark motorsport aesthetic, and instant offline/localhost rendering.
+
