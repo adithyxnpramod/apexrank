@@ -1,42 +1,47 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { computeStats, GpsPoint } from '@apextrack/shared';
+import { computeStats, GpsPoint, haversineM } from '@apextrack/shared';
 import {
   AlertTriangle,
   Clock,
   Flame,
+  Info,
   Navigation,
   Play,
+  Satellite,
   Square,
   Zap,
 } from 'lucide-react';
 import { api } from '../api';
+import { RouteMap } from '../components/RouteMap';
 import { SpeedometerGauge } from '../components/SpeedometerGauge';
 import { TelemetryStatCard } from '../components/TelemetryStatCard';
 
-type TrackingMode = 'simulated_city' | 'simulated_calibration' | 'simulated_anomaly' | 'device_gps';
+type TrackingMode = 'device_gps' | 'simulated_city' | 'simulated_calibration' | 'simulated_anomaly';
 
 export const ActiveTripScreen: React.FC = () => {
   const navigate = useNavigate();
 
   // Driving State
   const [isRecording, setIsRecording] = useState<boolean>(false);
-  const [trackingMode, setTrackingMode] = useState<TrackingMode>('simulated_city');
+  const [trackingMode, setTrackingMode] = useState<TrackingMode>('device_gps');
   const [unit, setUnit] = useState<'km/h' | 'mph'>('km/h');
   const [tripId, setTripId] = useState<string | null>(null);
 
   // Live Telemetry Buffer
   const [points, setPoints] = useState<GpsPoint[]>([]);
   const [currentSpeedMps, setCurrentSpeedMps] = useState<number>(0);
-  const [currentAccuracyM, setCurrentAccuracyM] = useState<number>(4.8);
+  const [currentAccuracyM, setCurrentAccuracyM] = useState<number>(5.0);
   const [wakeLockActive, setWakeLockActive] = useState<boolean>(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [gpsStatus, setGpsStatus] = useState<'idle' | 'searching' | 'locked'>('idle');
 
-  // References for timers and hardware
+  // References for timers, hardware, and velocity tracking
   const watchIdRef = useRef<number | null>(null);
   const simIntervalRef = useRef<number | null>(null);
   const wakeLockRef = useRef<any>(null);
   const simStepRef = useRef<number>(0);
+  const lastRecordedPointRef = useRef<GpsPoint | null>(null);
 
   // Request Screen Wake Lock when recording
   useEffect(() => {
@@ -87,6 +92,7 @@ export const ActiveTripScreen: React.FC = () => {
       setCurrentSpeedMps(0);
       setIsRecording(true);
       simStepRef.current = 0;
+      lastRecordedPointRef.current = null;
 
       if (trackingMode === 'device_gps') {
         startDeviceGps(newTrip.id);
@@ -98,27 +104,74 @@ export const ActiveTripScreen: React.FC = () => {
     }
   };
 
-  // Hardware GPS Watcher
+  // Hardware GPS Watcher with fallback velocity calculation
   const startDeviceGps = (activeTripId: string) => {
     if (!navigator.geolocation) {
       setGpsError('Geolocation is not supported by this browser.');
       return;
     }
 
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      setGpsError(
+        'Warning: Mobile browsers require HTTPS to access hardware GPS sensors. Make sure to test on your HTTPS Vercel URL.'
+      );
+    }
+
+    setGpsStatus('searching');
+
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
+        setGpsStatus('locked');
+        setGpsError(null);
+
+        const timestamp = pos.timestamp || Date.now();
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const accuracy = pos.coords.accuracy ?? 10;
+
+        // Velocity determination:
+        // 1. If mobile hardware provides doppler speed, use it directly.
+        // 2. Otherwise compute implied velocity via Haversine distance from previous fix.
+        let effectiveSpeedMps: number | undefined;
+
+        if (
+          pos.coords.speed !== null &&
+          pos.coords.speed !== undefined &&
+          pos.coords.speed >= 0
+        ) {
+          effectiveSpeedMps = pos.coords.speed;
+        } else if (lastRecordedPointRef.current) {
+          const prev = lastRecordedPointRef.current;
+          const dtS = (timestamp - prev.timestamp) / 1000;
+          if (dtS > 0.4) {
+            const distM = haversineM(prev, { lat, lon });
+            if (distM < 1.5) {
+              // Stationary GPS jitter: sitting in place
+              effectiveSpeedMps = 0;
+            } else {
+              const calc = distM / dtS;
+              // Ignore impossible teleports (> 100 m/s = 360 km/h)
+              if (calc <= 100) {
+                effectiveSpeedMps = calc;
+              }
+            }
+          }
+        }
+
         const point: GpsPoint = {
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude,
-          timestamp: pos.timestamp || Date.now(),
-          accuracyM: pos.coords.accuracy,
-          speedMps: pos.coords.speed !== null && pos.coords.speed >= 0 ? pos.coords.speed : undefined,
+          lat,
+          lon,
+          timestamp,
+          accuracyM: accuracy,
+          speedMps: effectiveSpeedMps ?? 0,
           mocked: false,
         };
 
-        setCurrentAccuracyM(pos.coords.accuracy);
-        if (point.speedMps !== undefined) {
-          setCurrentSpeedMps(point.speedMps);
+        lastRecordedPointRef.current = point;
+        setCurrentAccuracyM(accuracy);
+
+        if (effectiveSpeedMps !== undefined) {
+          setCurrentSpeedMps(effectiveSpeedMps);
         }
 
         setPoints((prev) => {
@@ -129,12 +182,23 @@ export const ActiveTripScreen: React.FC = () => {
       },
       (err) => {
         console.error('GPS watch error:', err);
-        setGpsError(err.message);
+        let msg = err.message;
+        if (err.code === 1) {
+          msg =
+            'Location permission denied. Please enable Location permissions for this site in your phone browser settings.';
+        } else if (err.code === 2) {
+          msg =
+            'GPS location unavailable. Ensure your device Location / GPS toggle is turned ON.';
+        } else if (err.code === 3) {
+          msg =
+            'Acquiring satellite lock... Please stay in an open area with sky visibility.';
+        }
+        setGpsError(msg);
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 10000,
+        maximumAge: 2000,
+        timeout: 15000,
       }
     );
   };
@@ -215,6 +279,7 @@ export const ActiveTripScreen: React.FC = () => {
     }
 
     setIsRecording(false);
+    setGpsStatus('idle');
 
     if (tripId) {
       try {
@@ -250,8 +315,20 @@ export const ActiveTripScreen: React.FC = () => {
     return `${mins}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  // Derive GeoJSON for the live map
+  const liveGeoJson = {
+    type: 'LineString' as const,
+    coordinates: points.map((p) => [p.lon, p.lat] as [number, number]),
+  };
+
+  const liveCurrentCoord: [number, number] | undefined =
+    points.length > 0
+      ? [points[points.length - 1].lon, points[points.length - 1].lat]
+      : undefined;
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
+      {/* Active Status Bar */}
       <div className="flex items-center justify-between glass-panel rounded-2xl px-5 py-3 border border-dark-700/80">
         <div className="flex items-center space-x-3">
           <div
@@ -265,7 +342,18 @@ export const ActiveTripScreen: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-3 text-xs font-mono text-slate-400">
-          <span className="hidden sm:inline">GPS Accuracy: ±{currentAccuracyM.toFixed(1)}m</span>
+          {trackingMode === 'device_gps' && (
+            <span className="flex items-center space-x-1.5">
+              <Satellite className="w-3.5 h-3.5 text-apex-cyan" />
+              <span>
+                {gpsStatus === 'locked'
+                  ? `±${currentAccuracyM.toFixed(1)}m`
+                  : gpsStatus === 'searching'
+                  ? 'Acquiring Fix...'
+                  : 'GPS Standby'}
+              </span>
+            </span>
+          )}
           {wakeLockActive && (
             <span className="px-2 py-0.5 rounded bg-apex-emerald/10 text-apex-emerald border border-apex-emerald/20 text-[10px]">
               WAKE LOCK ON
@@ -274,6 +362,7 @@ export const ActiveTripScreen: React.FC = () => {
         </div>
       </div>
 
+      {/* GPS Error Notification */}
       {gpsError && (
         <div className="glass-panel border-apex-coral/40 bg-apex-coral/10 text-apex-coral rounded-2xl p-4 flex items-center space-x-3 text-sm font-mono">
           <AlertTriangle className="w-5 h-5 flex-shrink-0" />
@@ -281,6 +370,7 @@ export const ActiveTripScreen: React.FC = () => {
         </div>
       )}
 
+      {/* Speedometer Gauge */}
       <div className="glass-panel rounded-3xl p-4 sm:p-8 border border-dark-700/80 flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-b from-dark-900 to-dark-950">
         <SpeedometerGauge
           speedMps={currentSpeedMps}
@@ -302,11 +392,12 @@ export const ActiveTripScreen: React.FC = () => {
         </div>
       </div>
 
+      {/* Telemetry Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <TelemetryStatCard
           label="Distance"
           value={displayDistance}
-          subValue={`${points.length} GPS pings`}
+          subValue={`${points.length} GPS fixes`}
           icon={Navigation}
           variant="cyan"
         />
@@ -341,18 +432,49 @@ export const ActiveTripScreen: React.FC = () => {
         />
       </div>
 
+      {/* Live Route Breadcrumb Map (Visible while recording or after pings arrive) */}
+      {points.length > 0 && (
+        <div className="glass-panel rounded-3xl p-4 border border-dark-700/80 space-y-2">
+          <div className="flex items-center justify-between text-xs font-mono text-slate-400 px-1">
+            <span className="uppercase tracking-wider flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full bg-apex-cyan animate-pulse" />
+              <span>Live Vehicle Radar & Breadcrumb Trail</span>
+            </span>
+            <span>{points.length} fixes recorded</span>
+          </div>
+
+          <RouteMap
+            routeGeoJson={liveGeoJson}
+            liveLocation={liveCurrentCoord}
+            className="h-64 sm:h-80 w-full"
+            interactive={true}
+            followLive={true}
+          />
+        </div>
+      )}
+
+      {/* Controls & Mode Selection */}
       <div className="glass-panel rounded-2xl p-5 border border-dark-700/80 space-y-4">
         {!isRecording ? (
           <div>
-            <label className="text-xs font-mono uppercase tracking-wider text-slate-400 block mb-2">
-              Select Telemetry Source
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-mono uppercase tracking-wider text-slate-400">
+                Select Telemetry Source
+              </label>
+              {trackingMode === 'device_gps' && (
+                <span className="text-[11px] font-mono text-apex-cyan flex items-center space-x-1">
+                  <Info className="w-3 h-3" />
+                  <span>Real Mobile Receiver</span>
+                </span>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
               {[
-                { id: 'simulated_city', label: 'City Drive', desc: 'Cruising & red lights' },
+                { id: 'device_gps', label: 'Live Device GPS', desc: 'Hardware GPS (Vivo, iPhone, etc.)' },
+                { id: 'simulated_city', label: 'City Drive', desc: 'Cruising & red lights simulation' },
                 { id: 'simulated_calibration', label: '1km Calibration', desc: 'Exact 20 m/s straight line' },
                 { id: 'simulated_anomaly', label: 'Anomaly Spikes', desc: 'Tests teleport anti-cheat' },
-                { id: 'device_gps', label: 'Live Device GPS', desc: 'Browser GPS receiver' },
               ].map((m) => (
                 <button
                   key={m.id}
@@ -382,10 +504,12 @@ export const ActiveTripScreen: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left">
               <span className="font-mono text-xs text-slate-400 block">
-                Session Active • Points Buffered: {points.length}
+                Session Active • Fixes Buffered: {points.length}
               </span>
               <span className="font-bold text-sm text-slate-200">
-                Drive normally. All SI metrics are computed live.
+                {points.length === 0
+                  ? 'Acquiring initial satellite coordinates...'
+                  : 'Driving telemetry active. Speed & distance are computed live.'}
               </span>
             </div>
 

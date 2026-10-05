@@ -99,12 +99,13 @@ export interface ValidationConfig {
 }
 
 export const DEFAULT_VALIDATION_CONFIG: Readonly<ValidationConfig> = {
-  maxAccuracyM: 50.0,
+  maxAccuracyM: 80.0,
   maxSpeedMps: 100.0,
   maxAccelerationMps2: 15.0,
   movingSpeedThresholdMps: 0.5,
-  minPointsRequired: 3,
-  maxSuspiciousRatio: 0.2,
+  minPointsRequired: 2,
+  maxSuspiciousRatio: 0.25,
 };
 
 export const EARTH_RADIUS_M = 6_371_000;
+

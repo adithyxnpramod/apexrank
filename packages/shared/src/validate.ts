@@ -114,11 +114,21 @@ export function validatePoints(
       continue;
     }
 
-    // 3. Check timestamp sequence (must be strictly increasing)
+    // 3. Check timestamp sequence (must be increasing)
     const timeDeltaMs = point.timestamp - lastValidPoint.timestamp;
     const timeDeltaS = timeDeltaMs / 1000;
 
-    if (timeDeltaS <= 0) {
+    if (timeDeltaMs === 0) {
+      // Identical millisecond timestamp: duplicate hardware ping, discard without penalty
+      point.isValid = false;
+      point.anomalyReason = 'BACKWARDS_TIMESTAMP';
+      point.timeDeltaS = 0;
+      validated.push(point);
+      continue;
+    }
+
+    if (timeDeltaMs < 0) {
+      // Clock went backwards into the past: flag as suspicious
       point.isValid = false;
       point.anomalyReason = 'BACKWARDS_TIMESTAMP';
       point.timeDeltaS = timeDeltaS;
@@ -137,7 +147,8 @@ export function validatePoints(
     point.impliedSpeedMps = impliedSpeedMps;
 
     // Speed check: Is velocity impossible for a motor vehicle? (> 100 m/s = 360 km/h)
-    if (impliedSpeedMps > config.maxSpeedMps) {
+    // Only flag speed teleport if distance is substantial (> 25m) to avoid sub-second jitter false positives
+    if (impliedSpeedMps > config.maxSpeedMps && distanceM > 25.0) {
       point.isValid = false;
       point.anomalyReason = 'SPEED_TELEPORT';
       suspiciousJumpsCount++;
@@ -146,12 +157,17 @@ export function validatePoints(
     }
 
     // 5. Acceleration check: Is rate of change in speed impossible? (> 15 m/s² ~ 1.5g)
-    if (lastValidSpeedMps !== null) {
+    // Only check acceleration if interval is at least 0.5s and both points reflect actual motion (> 3.0 m/s ~ 11 km/h)
+    if (lastValidSpeedMps !== null && timeDeltaS >= 0.5) {
       const speedDelta = Math.abs(impliedSpeedMps - lastValidSpeedMps);
       const impliedAcceleration = speedDelta / timeDeltaS;
       point.impliedAccelerationMps2 = impliedAcceleration;
 
-      if (impliedAcceleration > config.maxAccelerationMps2) {
+      if (
+        impliedSpeedMps > 3.0 &&
+        lastValidSpeedMps > 3.0 &&
+        impliedAcceleration > config.maxAccelerationMps2
+      ) {
         point.isValid = false;
         point.anomalyReason = 'EXCESSIVE_ACCELERATION';
         suspiciousJumpsCount++;
@@ -175,7 +191,7 @@ export function validatePoints(
   if (validPointsCount < config.minPointsRequired) {
     isTripValid = false;
     invalidReason = 'TOO_FEW_VALID_POINTS';
-  } else if (suspiciousRatio > config.maxSuspiciousRatio) {
+  } else if (suspiciousJumpsCount >= 2 && suspiciousRatio > config.maxSuspiciousRatio) {
     isTripValid = false;
     invalidReason = 'EXCESSIVE_ANOMALIES';
   }

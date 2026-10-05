@@ -18,10 +18,10 @@ describe('GPS Stream Validation & Anomaly Detection', () => {
     expect(result.points[2].anomalyReason).toBe('COORDINATES_OUT_OF_BOUNDS');
   });
 
-  it('rejects points with poor GPS accuracy (> 50m)', () => {
+  it('rejects points with poor GPS accuracy (> 65m)', () => {
     const points: GpsPoint[] = [
       { lat: 37.7749, lon: -122.4194, timestamp: 1000, accuracyM: 5.0 },
-      { lat: 37.775, lon: -122.4193, timestamp: 2000, accuracyM: 65.0 }, // Poor accuracy
+      { lat: 37.775, lon: -122.4193, timestamp: 2000, accuracyM: 85.0 }, // Poor accuracy
       { lat: 37.7751, lon: -122.4192, timestamp: 3000, accuracyM: 10.0 },
     ];
 
@@ -83,15 +83,14 @@ describe('GPS Stream Validation & Anomaly Detection', () => {
     expect(result.points[2].anomalyReason).toBe('EXCESSIVE_ACCELERATION');
   });
 
-  it('marks trip INVALID when valid points are below minimum (< 3 points)', () => {
+  it('marks trip INVALID when valid points are below minimum (< 2 points)', () => {
     const points: GpsPoint[] = [
       { lat: 37.7749, lon: -122.4194, timestamp: 1000 },
-      { lat: 37.775, lon: -122.4193, timestamp: 2000 },
     ];
 
     const result = validatePoints(points);
 
-    expect(result.validPointsCount).toBe(2);
+    expect(result.validPointsCount).toBe(1);
     expect(result.isTripValid).toBe(false);
     expect(result.invalidReason).toBe('TOO_FEW_VALID_POINTS');
   });

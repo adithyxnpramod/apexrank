@@ -219,12 +219,20 @@ export const TripDetailsScreen: React.FC = () => {
         </div>
 
         {trip.status === 'INVALID' && (
-          <div className="p-3 rounded-xl bg-apex-coral/10 border border-apex-coral/30 text-apex-coral text-xs font-mono flex items-center space-x-2">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            <span>
-              Telemetry flagged as invalid by trip engine: {trip.invalidReason || 'ANOMALY_DETECTED'}.
-              Excluded from official driver rankings.
-            </span>
+          <div className="p-4 rounded-xl bg-apex-coral/10 border border-apex-coral/30 text-apex-coral text-xs font-mono space-y-1">
+            <div className="flex items-center space-x-2 font-bold">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+              <span>Telemetry Anomaly Flagged: {trip.invalidReason || 'ANOMALY_DETECTED'}</span>
+            </div>
+            <p className="text-slate-300 text-[11px] pl-6">
+              {trip.invalidReason === 'TOO_FEW_VALID_POINTS'
+                ? 'The recording was stopped before receiving at least 2 valid GPS points. Take a longer drive or wait for initial satellite lock.'
+                : trip.invalidReason === 'NO_POINTS_PROVIDED'
+                ? 'No GPS coordinates were received before ending the recording.'
+                : trip.invalidReason === 'EXCESSIVE_ANOMALIES'
+                ? 'Abnormal speed spikes or clock shifts were detected. Excluded from official leaderboard rankings.'
+                : 'Drive telemetry did not meet physical verification bounds. Excluded from leaderboard rankings.'}
+            </p>
           </div>
         )}
       </div>

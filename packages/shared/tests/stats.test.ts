@@ -53,10 +53,9 @@ describe('Trip Statistics Engine', () => {
     expect(stats.avgSpeedMps).toBeGreaterThan(10);
   });
 
-  it('marks trip INVALID and returns zero stats when fewer than 3 valid points', () => {
+  it('marks trip INVALID and returns zero stats when fewer than 2 valid points', () => {
     const shortTrip = [
       { lat: 37.7749, lon: -122.4194, timestamp: 1000 },
-      { lat: 37.775, lon: -122.4193, timestamp: 2000 },
     ];
 
     const stats = computeStats(shortTrip);
