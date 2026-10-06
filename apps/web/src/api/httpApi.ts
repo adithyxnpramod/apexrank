@@ -2,6 +2,8 @@ import { GpsPoint, Visibility } from '@apextrack/shared';
 import { ApiClient } from './client';
 import {
   CreateTripDto,
+  DashboardData,
+  DriverComparisonData,
   LeaderboardEntry,
   LeaderboardMetric,
   TripRecord,
@@ -107,4 +109,23 @@ export class HttpApiClient implements ApiClient {
   async getPublicTrip(shareCode: string): Promise<TripRecord> {
     return this.request<TripRecord>(`/public/trips/${shareCode}`);
   }
+
+  async getDashboard(): Promise<DashboardData> {
+    return this.request<DashboardData>('/me/dashboard');
+  }
+
+  async getDriversList(): Promise<UserProfile[]> {
+    return this.request<UserProfile[]>('/users');
+  }
+
+  async getDriverComparison(
+    driverAId?: string,
+    driverBId?: string
+  ): Promise<DriverComparisonData> {
+    const params = new URLSearchParams();
+    if (driverAId) params.set('userA', driverAId);
+    if (driverBId) params.set('userB', driverBId);
+    return this.request<DriverComparisonData>(`/compare?${params.toString()}`);
+  }
 }
+

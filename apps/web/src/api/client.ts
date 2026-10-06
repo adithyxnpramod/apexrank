@@ -1,6 +1,8 @@
 import { GpsPoint, Visibility } from '@apextrack/shared';
 import {
   CreateTripDto,
+  DashboardData,
+  DriverComparisonData,
   LeaderboardEntry,
   LeaderboardMetric,
   TripRecord,
@@ -22,4 +24,9 @@ export interface ApiClient {
 
   getLeaderboard(metric: LeaderboardMetric): Promise<LeaderboardEntry[]>;
   getPublicTrip(shareCode: string): Promise<TripRecord>;
+
+  getDashboard(): Promise<DashboardData>;
+  getDriverComparison(driverAId?: string, driverBId?: string): Promise<DriverComparisonData>;
+  getDriversList(): Promise<UserProfile[]>;
 }
+

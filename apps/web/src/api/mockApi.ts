@@ -5,9 +5,19 @@ import {
   Visibility,
 } from '@apextrack/shared';
 import { ApiClient } from './client';
-import { INITIAL_LEADERBOARD, INITIAL_TRIPS, INITIAL_USER } from './mockData';
+import {
+  ALL_DRIVERS,
+  INITIAL_ACHIEVEMENTS,
+  INITIAL_LEADERBOARD,
+  INITIAL_TRIPS,
+  INITIAL_USER,
+  INITIAL_VEHICLES,
+  INITIAL_WEEKLY_ACTIVITY,
+} from './mockData';
 import {
   CreateTripDto,
+  DashboardData,
+  DriverComparisonData,
   LeaderboardEntry,
   LeaderboardMetric,
   TripRecord,
@@ -253,4 +263,213 @@ export class MockApiClient implements ApiClient {
       userId: 'anonymous',
     };
   }
+
+  async getDashboard(): Promise<DashboardData> {
+    const user = getStoredUser();
+    const trips = getStoredTrips().slice(0, 5);
+
+    return {
+      user,
+      driverLevel: 84,
+      rankBadge: 'APEX ELITE',
+      safetyScore: 94.2,
+      totalHotLaps: 342,
+      maxLateralG: 1.82,
+      weeklyActivity: INITIAL_WEEKLY_ACTIVITY,
+      weeklyTotalDistanceKm: 1482.0,
+      weeklyDistanceDeltaPct: 18.4,
+      activeVehicle: INITIAL_VEHICLES[0],
+      garage: INITIAL_VEHICLES,
+      achievements: INITIAL_ACHIEVEMENTS,
+      recentTrips: trips,
+    };
+  }
+
+  async getDriversList(): Promise<UserProfile[]> {
+    const me = getStoredUser();
+    return [me, ...ALL_DRIVERS.filter((d) => d.id !== me.id)];
+  }
+
+  async getDriverComparison(
+    driverAId?: string,
+    driverBId?: string
+  ): Promise<DriverComparisonData> {
+    const me = getStoredUser();
+    const drivers = await this.getDriversList();
+
+    const dA = drivers.find((d) => d.id === driverAId) || me;
+    const dB =
+      drivers.find((d) => d.id === driverBId) ||
+      drivers.find((d) => d.id !== dA.id) ||
+      ALL_DRIVERS[1];
+
+    const speedAKmh = Number(((dA.topSpeedMps || 59.4) * 3.6).toFixed(1));
+    const speedBKmh = Number(((dB.topSpeedMps || 60.8) * 3.6).toFixed(1));
+
+    const distAKm = Number(((dA.totalDistanceM || 1_482_000) / 1000).toFixed(1));
+    const distBKm = Number(((dB.totalDistanceM || 1_240_000) / 1000).toFixed(1));
+
+    return {
+      driverA: {
+        id: dA.id,
+        username: dA.username,
+        rankBadge: 'APEX ELITE',
+        driverLevel: 84,
+        avatarUrl: dA.avatarUrl,
+        vehicle: 'Porsche 911 GT3 RS (992)',
+        topSpeedKmh: speedAKmh,
+        avgSpeedKmh: 94.2,
+        totalDistanceKm: distAKm,
+        safetyRating: 94.0,
+        consistencyPct: 96.8,
+        maxCorneringG: 1.82,
+        throttleSmoothnessPct: 96.0,
+      },
+      driverB: {
+        id: dB.id,
+        username: dB.username,
+        rankBadge: 'TRACK PRODIGY',
+        driverLevel: 79,
+        avatarUrl: dB.avatarUrl,
+        vehicle: 'BMW M3 CS (G80)',
+        topSpeedKmh: speedBKmh,
+        avgSpeedKmh: 91.5,
+        totalDistanceKm: distBKm,
+        safetyRating: 91.0,
+        consistencyPct: 95.2,
+        maxCorneringG: 1.71,
+        throttleSmoothnessPct: 98.0,
+      },
+      scoreA: 4,
+      scoreB: 2,
+      gapText: '-0.284s (Vance Leads)',
+      radarAxes: [
+        {
+          label: 'Top Speed',
+          valueA: 88,
+          valueB: 94,
+          rawValueA: `${speedAKmh} km/h`,
+          rawValueB: `${speedBKmh} km/h`,
+          winner: speedAKmh >= speedBKmh ? 'A' : 'B',
+        },
+        {
+          label: 'Cornering G-Force',
+          valueA: 95,
+          valueB: 84,
+          rawValueA: '1.82 G',
+          rawValueB: '1.71 G',
+          winner: 'A',
+        },
+        {
+          label: 'Braking Efficiency',
+          valueA: 94,
+          valueB: 91,
+          rawValueA: '94%',
+          rawValueB: '91%',
+          winner: 'A',
+        },
+        {
+          label: 'Consistency',
+          valueA: 96,
+          valueB: 95,
+          rawValueA: '96.8%',
+          rawValueB: '95.2%',
+          winner: 'A',
+        },
+        {
+          label: 'Throttle Smoothness',
+          valueA: 92,
+          valueB: 98,
+          rawValueA: '96.0%',
+          rawValueB: '98.0%',
+          winner: 'B',
+        },
+        {
+          label: 'Total Mileage',
+          valueA: 90,
+          valueB: 82,
+          rawValueA: `${distAKm} km`,
+          rawValueB: `${distBKm} km`,
+          winner: distAKm >= distBKm ? 'A' : 'B',
+        },
+      ],
+      deltas: [
+        {
+          parameter: 'Turn 3 Apex Speed (Abbey)',
+          sector: 'Sector 1',
+          valueA: '184.2 km/h',
+          valueB: '178.0 km/h',
+          delta: '+6.2 km/h',
+          winner: 'A',
+        },
+        {
+          parameter: 'Turn 6 Braking Marker (Brooklands)',
+          sector: 'Sector 2',
+          valueA: '84 m',
+          valueB: '91 m',
+          delta: '-7 m later',
+          winner: 'A',
+        },
+        {
+          parameter: 'Max Lateral G (Maggotts/Becketts)',
+          sector: 'Sector 2',
+          valueA: '1.82 G',
+          valueB: '1.71 G',
+          delta: '+0.11 G',
+          winner: 'A',
+        },
+        {
+          parameter: 'Hangar Straight Peak Speed',
+          sector: 'Sector 3',
+          valueA: `${speedAKmh} km/h`,
+          valueB: `${speedBKmh} km/h`,
+          delta: `+${Math.abs(speedBKmh - speedAKmh).toFixed(1)} km/h`,
+          winner: speedBKmh > speedAKmh ? 'B' : 'A',
+        },
+        {
+          parameter: 'Throttle Exit Angle (Turn 18 Club)',
+          sector: 'Sector 3',
+          valueA: '94%',
+          valueB: '97%',
+          delta: '+3%',
+          winner: 'B',
+        },
+        {
+          parameter: 'Min Apex Speed (Village Chicane)',
+          sector: 'Sector 1',
+          valueA: '92.4 km/h',
+          valueB: '89.1 km/h',
+          delta: '+3.3 km/h',
+          winner: 'A',
+        },
+      ],
+      sharedCircuitBattles: [
+        {
+          circuit: 'Silverstone Grand Prix Circuit (UK)',
+          conditions: 'Dry Asphalt • 29°C',
+          lapTimeA: '1:58.214',
+          lapTimeB: '1:58.498',
+          gap: '-0.284s',
+          winner: 'A',
+        },
+        {
+          circuit: 'Circuit de Spa-Francorchamps (BEL)',
+          conditions: 'Damp Kerbs • 19°C',
+          lapTimeA: '2:19.450',
+          lapTimeB: '2:18.910',
+          gap: '+0.540s',
+          winner: 'B',
+        },
+        {
+          circuit: 'Nürburgring GP Strecke (GER)',
+          conditions: 'Clear Sky • 24°C',
+          lapTimeA: '1:36.120',
+          lapTimeB: '1:36.640',
+          gap: '-0.520s',
+          winner: 'A',
+        },
+      ],
+    };
+  }
 }
+

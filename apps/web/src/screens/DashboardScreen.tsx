@@ -2,140 +2,218 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  Compass,
+  Activity,
+  ChevronRight,
   Flame,
   Gauge,
   Navigation,
   Play,
-  Trophy,
+  ShieldCheck,
+  Swords,
 } from 'lucide-react';
 import { api } from '../api';
+import { AchievementsShelf } from '../components/AchievementsShelf';
 import { TelemetryStatCard } from '../components/TelemetryStatCard';
 import { TripCard } from '../components/TripCard';
+import { VehicleGarageCard } from '../components/VehicleGarageCard';
+import { WeeklyMileageChart } from '../components/WeeklyMileageChart';
 
 export const DashboardScreen: React.FC = () => {
   const navigate = useNavigate();
 
-  const { data: user } = useQuery({
-    queryKey: ['me'],
-    queryFn: () => api.getMe(),
+  const { data: dashboard, isLoading } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: () => api.getDashboard(),
   });
 
-  const { data: tripsData, isLoading: tripsLoading } = useQuery({
-    queryKey: ['trips', 1, 3],
-    queryFn: () => api.getTrips(1, 3),
-  });
+  if (isLoading || !dashboard) {
+    return (
+      <div className="h-96 glass-panel rounded-3xl flex items-center justify-center font-mono text-slate-400 animate-pulse">
+        Loading Driver Intelligence Dashboard...
+      </div>
+    );
+  }
 
-  const { data: speedLeaderboard } = useQuery({
-    queryKey: ['leaderboard', 'speed'],
-    queryFn: () => api.getLeaderboard('speed'),
-  });
+  const {
+    user,
+    driverLevel,
+    rankBadge,
+    safetyScore,
+    maxLateralG,
+    weeklyActivity,
+    weeklyTotalDistanceKm,
+    weeklyDistanceDeltaPct,
+    activeVehicle,
+    garage,
+    achievements,
+    recentTrips,
+  } = dashboard;
 
-  const myRank = speedLeaderboard?.find((e) => e.userId === user?.id)?.rank ?? 2;
-
-  // Format stats
-  const totalKm = ((user?.totalDistanceM ?? 0) / 1000).toFixed(1);
-  const topSpeedKmh = ((user?.topSpeedMps ?? 0) * 3.6).toFixed(1);
+  const totalKm = (user.totalDistanceM / 1000).toFixed(1);
+  const topSpeedKmh = (user.topSpeedMps * 3.6).toFixed(1);
 
   return (
-    <div className="space-y-8 pb-16">
-      {/* Hero Drive Banner */}
-      <div className="relative overflow-hidden rounded-3xl glass-panel p-6 sm:p-8 border border-dark-700/80 bg-gradient-to-r from-dark-900 via-dark-800 to-dark-950">
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center space-x-2 text-xs font-mono uppercase tracking-widest text-apex-cyan">
-              <span className="w-2 h-2 rounded-full bg-apex-cyan animate-ping"></span>
-              <span>Telemetry Hub</span>
-              <span>•</span>
-              <span>{user?.rankTitle || 'Apex Driver'}</span>
+    <div className="space-y-8 pb-20">
+      {/* Driver Cockpit Hero Banner */}
+      <div className="relative overflow-hidden rounded-3xl glass-panel p-6 sm:p-8 border border-dark-700/80 bg-gradient-to-r from-dark-900 via-dark-800 to-dark-950 shadow-2xl">
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+          {/* Driver Profile & Rank */}
+          <div className="flex items-center space-x-5">
+            <div className="relative">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-apex-cyan via-apex-blue to-apex-violet p-[2px] shadow-glow">
+                <img
+                  src={user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+                  alt={user.username}
+                  className="w-full h-full object-cover rounded-[14px]"
+                />
+              </div>
+              <span className="absolute -bottom-2 -right-2 px-2 py-0.5 rounded-md bg-dark-950 border border-apex-cyan text-[10px] font-mono font-bold text-apex-cyan">
+                LVL {driverLevel}
+              </span>
             </div>
-            <h1 className="mt-2 text-3xl sm:text-4xl font-display font-black text-white tracking-tight">
-              Ready to record your next apex?
-            </h1>
-            <p className="mt-1 text-slate-300 text-sm sm:text-base max-w-xl">
-              Track live GPS telemetry, calculate acceleration & speed curves, filter
-              teleport anomalies, and climb the global driver rankings.
-            </p>
+
+            <div>
+              <div className="flex items-center space-x-2.5">
+                <span className="px-2.5 py-0.5 rounded-full bg-apex-cyan/10 border border-apex-cyan/30 text-apex-cyan text-xs font-mono font-bold tracking-wider uppercase">
+                  {rankBadge}
+                </span>
+                <span className="text-xs font-mono text-slate-400">
+                  SYS: ONLINE // 50Hz TELEMETRY
+                </span>
+              </div>
+              <h1 className="mt-1.5 text-2xl sm:text-3xl font-display font-black text-white tracking-tight">
+                {user.username}
+              </h1>
+              <p className="text-xs text-slate-400 font-mono mt-0.5 max-w-md line-clamp-1">
+                {user.bio || 'Chasing clean apexes and zero idle time.'}
+              </p>
+            </div>
           </div>
 
-          <button
-            onClick={() => navigate('/drive')}
-            className="flex items-center space-x-3 px-6 py-4 rounded-2xl bg-gradient-to-r from-apex-cyan via-apex-blue to-apex-violet text-dark-950 font-bold text-base hover:brightness-110 active:scale-95 transition-all shadow-glow group"
-          >
-            <div className="w-8 h-8 rounded-xl bg-dark-950/20 flex items-center justify-center">
-              <Play className="w-4 h-4 fill-dark-950 text-dark-950 group-hover:scale-110 transition-transform" />
-            </div>
-            <span>Launch Active Drive</span>
-          </button>
+          {/* Action CTAs: Start Drive & Compare */}
+          <div className="flex items-center space-x-3 w-full sm:w-auto">
+            <button
+              onClick={() => navigate('/compare')}
+              className="flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-5 py-3.5 rounded-2xl bg-dark-800 hover:bg-dark-700 border border-dark-600 text-white font-mono text-xs font-bold transition-all shadow-md hover:border-apex-violet"
+            >
+              <Swords className="w-4 h-4 text-apex-violet" />
+              <span>Battle Compare</span>
+            </button>
+
+            <button
+              onClick={() => navigate('/drive')}
+              className="flex-1 sm:flex-initial flex items-center justify-center space-x-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-apex-cyan to-apex-blue text-dark-950 font-bold text-sm hover:brightness-110 active:scale-95 transition-all shadow-glow"
+            >
+              <Play className="w-4 h-4 fill-dark-950" />
+              <span>Start Drive</span>
+            </button>
+          </div>
         </div>
 
-        {/* Ambient background glow */}
-        <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-apex-cyan/10 rounded-full blur-3xl pointer-events-none"></div>
+        {/* Ambient atmospheric glow */}
+        <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-apex-cyan/10 rounded-full blur-3xl pointer-events-none" />
       </div>
 
-      {/* Driver Telemetry Career Stat Cards */}
+      {/* Core Career Telemetry Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <TelemetryStatCard
-          label="Total Distance"
+          label="Career Odometer"
           value={totalKm}
           unit="km"
-          subValue={`${((user?.totalDistanceM ?? 0) * 0.000621371).toFixed(1)} miles`}
+          subValue={`${((user.totalDistanceM) * 0.000621371).toFixed(1)} miles verified`}
           icon={Navigation}
           variant="cyan"
         />
 
         <TelemetryStatCard
-          label="Top Speed"
+          label="Peak Track Velocity"
           value={topSpeedKmh}
           unit="km/h"
-          subValue={`${((user?.topSpeedMps ?? 0) * 2.23694).toFixed(1)} mph peak`}
+          subValue={`${((user.topSpeedMps) * 2.23694).toFixed(1)} mph recorded`}
           icon={Flame}
           variant="coral"
         />
 
         <TelemetryStatCard
-          label="Total Drives"
-          value={user?.totalTrips ?? 0}
-          unit="trips"
-          subValue="Verified telemetries"
-          icon={Compass}
+          label="Driving Efficiency"
+          value={`${safetyScore.toFixed(1)}%`}
+          unit="Score"
+          subValue="Smooth throttle index"
+          icon={ShieldCheck}
           variant="emerald"
         />
 
         <TelemetryStatCard
-          label="Leaderboard Rank"
-          value={`#${myRank}`}
-          unit="Rank"
-          subValue="Speed category"
-          icon={Trophy}
-          variant="gold"
+          label="Peak Lateral G"
+          value={`${maxLateralG.toFixed(2)} G`}
+          unit="G-Force"
+          subValue="Cornering threshold"
+          icon={Activity}
+          variant="violet"
         />
       </div>
 
-      {/* Recent Trips Section */}
+      {/* Analytics Row: Weekly Mileage Curve & Active Garage Chassis */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Weekly Mileage Chart (Spans 2 columns on desktop) */}
+        <div className="lg:col-span-2 glass-panel rounded-3xl p-6 border border-dark-700/80 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-xl font-display font-bold text-white">
+                  Weekly Driving Analytics
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-apex-emerald/10 border border-apex-emerald/30 text-apex-emerald text-[10px] font-mono font-bold">
+                  +{weeklyDistanceDeltaPct}% vs last week
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-mono mt-0.5">
+                Total 7-day distance: <span className="text-apex-cyan font-bold">{weeklyTotalDistanceKm} km</span>
+              </p>
+            </div>
+
+            <div className="text-right hidden sm:block">
+              <span className="text-[11px] font-mono text-slate-400 block">Peak Day Distance</span>
+              <span className="text-sm font-mono font-bold text-white">385.0 km (Sat)</span>
+            </div>
+          </div>
+
+          <WeeklyMileageChart days={weeklyActivity} />
+        </div>
+
+        {/* Active Garage Vehicle Card */}
+        <div className="lg:col-span-1">
+          <VehicleGarageCard
+            vehicles={garage}
+            activeVehicle={activeVehicle}
+          />
+        </div>
+      </div>
+
+      {/* Driver Telemetry Badges Trophy Shelf */}
+      <AchievementsShelf achievements={achievements} />
+
+      {/* Recent Drives Timeline */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl sm:text-2xl font-display font-bold text-white">
-              Recent Drives
+              Recent Telemetry Sessions
             </h2>
             <p className="text-xs text-slate-400 font-mono">
-              Latest telemetry recordings & verified stats
+              GPS polyline recordings with verified SI kinematics
             </p>
           </div>
           <button
             onClick={() => navigate('/history')}
-            className="text-xs font-mono font-bold text-apex-cyan hover:underline"
+            className="flex items-center space-x-1 text-xs font-mono font-bold text-apex-cyan hover:underline"
           >
-            View All ({tripsData?.total ?? 0}) →
+            <span>View All Drives</span>
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
-        {tripsLoading ? (
-          <div className="h-40 glass-panel rounded-2xl flex items-center justify-center font-mono text-slate-400 animate-pulse">
-            Loading telemetry history...
-          </div>
-        ) : !tripsData?.trips.length ? (
+        {!recentTrips.length ? (
           <div className="glass-panel rounded-2xl p-8 text-center border border-dark-700/60">
             <Gauge className="w-12 h-12 text-slate-600 mx-auto mb-3" />
             <p className="text-slate-300 font-medium">No driving trips recorded yet</p>
@@ -145,7 +223,7 @@ export const DashboardScreen: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {tripsData.trips.map((trip) => (
+            {recentTrips.map((trip) => (
               <TripCard key={trip.id} trip={trip} />
             ))}
           </div>

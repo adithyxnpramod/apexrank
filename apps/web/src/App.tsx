@@ -3,6 +3,7 @@ import { Route, Routes, useLocation } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { ActiveTripScreen } from './screens/ActiveTripScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
+import { DriverCompareScreen } from './screens/DriverCompareScreen';
 import { LeaderboardScreen } from './screens/LeaderboardScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { PublicShareScreen } from './screens/PublicShareScreen';
@@ -22,6 +23,7 @@ export const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<DashboardScreen />} />
           <Route path="/drive" element={<ActiveTripScreen />} />
+          <Route path="/compare" element={<DriverCompareScreen />} />
           <Route path="/trips/:id" element={<TripDetailsScreen />} />
           <Route path="/history" element={<TripHistoryScreen />} />
           <Route path="/leaderboard" element={<LeaderboardScreen />} />

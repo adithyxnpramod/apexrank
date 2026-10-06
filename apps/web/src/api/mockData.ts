@@ -3,7 +3,14 @@ import {
   generateCityDrive,
   toGeoJsonLineString,
 } from '@apextrack/shared';
-import { LeaderboardEntry, TripRecord, UserProfile } from './types';
+import {
+  AchievementBadge,
+  LeaderboardEntry,
+  TripRecord,
+  UserProfile,
+  VehicleRecord,
+  WeeklyActivityDay,
+} from './types';
 
 export const INITIAL_USER: UserProfile = {
   id: 'usr-apex-01',
@@ -247,3 +254,140 @@ export const INITIAL_LEADERBOARD: Record<string, LeaderboardEntry[]> = {
     },
   ],
 };
+
+export const INITIAL_VEHICLES: VehicleRecord[] = [
+  {
+    id: 'veh-01',
+    make: 'Porsche',
+    model: '911 GT3 RS (992)',
+    year: 2024,
+    specs: '518 HP • 4.0L Boxer-6 • 9,000 RPM',
+    oilTempC: 98,
+    brakeWearPct: 84,
+    fuelBatteryPct: 78,
+    isDefault: true,
+  },
+  {
+    id: 'veh-02',
+    make: 'BMW',
+    model: 'M3 Competition (G80)',
+    year: 2023,
+    specs: '503 HP • 3.0L Twin-Turbo Inline-6',
+    oilTempC: 92,
+    brakeWearPct: 91,
+    fuelBatteryPct: 62,
+    isDefault: false,
+  },
+  {
+    id: 'veh-03',
+    make: 'Audi',
+    model: 'RS6 Avant Dynamic',
+    year: 2024,
+    specs: '591 HP • 4.0L Twin-Turbo V8',
+    oilTempC: 95,
+    brakeWearPct: 88,
+    fuelBatteryPct: 85,
+    isDefault: false,
+  },
+];
+
+export const INITIAL_ACHIEVEMENTS: AchievementBadge[] = [
+  {
+    id: 'ach-01',
+    title: '200+ Club',
+    description: 'Surpassed 200 km/h verified peak GPS velocity on track.',
+    iconName: 'Zap',
+    glowColor: 'cyan',
+    unlockedAt: '2026-10-01T15:30:00Z',
+    progressPct: 100,
+  },
+  {
+    id: 'ach-02',
+    title: 'Triple Apex Master',
+    description: 'Maintained optimal corner entry across 3 consecutive turns.',
+    iconName: 'Flame',
+    glowColor: 'gold',
+    unlockedAt: '2026-09-28T18:40:00Z',
+    progressPct: 100,
+  },
+  {
+    id: 'ach-03',
+    title: 'Precision 95+',
+    description: 'Maintained 94%+ safety & efficiency telemetry rating.',
+    iconName: 'CheckCircle',
+    glowColor: 'emerald',
+    unlockedAt: '2026-09-25T11:20:00Z',
+    progressPct: 100,
+  },
+  {
+    id: 'ach-04',
+    title: 'Night Racer',
+    description: 'Logged 100+ km of nocturnal track telemetry.',
+    iconName: 'Moon',
+    glowColor: 'violet',
+    unlockedAt: '2026-09-18T22:15:00Z',
+    progressPct: 100,
+  },
+  {
+    id: 'ach-05',
+    title: 'Centurion Laps',
+    description: 'Completed 100 verified driving trips on the platform.',
+    iconName: 'Trophy',
+    glowColor: 'cyan',
+    progressPct: 42,
+  },
+];
+
+export const INITIAL_WEEKLY_ACTIVITY: WeeklyActivityDay[] = [
+  { day: 'Mon', date: 'Sep 29', distanceKm: 142.0, trips: 2, avgSpeedKmh: 68.4, peakSpeedKmh: 124.0 },
+  { day: 'Tue', date: 'Sep 30', distanceKm: 88.5, trips: 1, avgSpeedKmh: 61.2, peakSpeedKmh: 112.5 },
+  { day: 'Wed', date: 'Oct 01', distanceKm: 210.2, trips: 3, avgSpeedKmh: 84.1, peakSpeedKmh: 168.0 },
+  { day: 'Thu', date: 'Oct 02', distanceKm: 195.0, trips: 2, avgSpeedKmh: 72.8, peakSpeedKmh: 145.2 },
+  { day: 'Fri', date: 'Oct 03', distanceKm: 312.4, trips: 4, avgSpeedKmh: 94.6, peakSpeedKmh: 214.2 },
+  { day: 'Sat', date: 'Oct 04', distanceKm: 385.0, trips: 5, avgSpeedKmh: 102.3, peakSpeedKmh: 208.7 },
+  { day: 'Sun', date: 'Oct 05', distanceKm: 148.9, trips: 2, avgSpeedKmh: 76.5, peakSpeedKmh: 154.0 },
+];
+
+export const ALL_DRIVERS: UserProfile[] = [
+  INITIAL_USER,
+  {
+    id: 'usr-turbo-01',
+    username: 'Elena "Apex" Rostova',
+    email: 'elena@apextrack.dev',
+    avatarUrl: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80',
+    bio: 'BMW Motorsport test driver. Pushing G-limits and late braking zones.',
+    totalDistanceM: 245_800,
+    totalDurationS: 8_920,
+    totalTrips: 42,
+    topSpeedMps: 60.8, // 219 km/h
+    rankTitle: 'Track Prodigy',
+    createdAt: '2026-08-10T12:00:00Z',
+  },
+  {
+    id: 'usr-drift-04',
+    username: 'Marcus "Drift" Kane',
+    email: 'marcus@apextrack.dev',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    bio: 'Lateral G enthusiast. Master of slip angle and throttle feathering.',
+    totalDistanceM: 184_200,
+    totalDurationS: 6_710,
+    totalTrips: 31,
+    topSpeedMps: 52.4, // ~188 km/h
+    rankTitle: 'Apex Master (Tier I)',
+    createdAt: '2026-08-20T14:30:00Z',
+  },
+  {
+    id: 'usr-ghost-03',
+    username: 'GhostShifter',
+    email: 'ghost@apextrack.dev',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    bio: 'Night run specialist on mountain switchbacks.',
+    totalDistanceM: 92_400,
+    totalDurationS: 3_820,
+    totalTrips: 19,
+    topSpeedMps: 48.6,
+    rankTitle: 'Apex Competitor',
+    createdAt: '2026-09-01T10:00:00Z',
+  },
+];
+

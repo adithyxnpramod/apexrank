@@ -5,6 +5,7 @@ import {
   Gauge,
   History,
   Play,
+  Swords,
   Trophy,
   User,
 } from 'lucide-react';
@@ -14,10 +15,12 @@ export const Navbar: React.FC = () => {
 
   const navItems = [
     { to: '/', label: 'Dashboard', icon: Compass },
+    { to: '/compare', label: 'Compare', icon: Swords },
     { to: '/history', label: 'History', icon: History },
     { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
     { to: '/profile', label: 'Profile', icon: User },
   ];
+
 
   return (
     <>
